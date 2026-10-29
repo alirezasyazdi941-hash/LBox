@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en" id="htmlRoot">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>NONONICK NNX — Encrypted File Container</title>
+<style>
+  :root {
+    --bg: #050608;
+    --panel: #0d1117;
+    --panel-2: #161b22;
+    --border: #21262d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --accent-2: #79c0ff;
+    --success: #3fb950;
+    --danger: #f85149;
+    --warning: #d29922;
+    --radius: 14px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { width: 100%; max-width: 640px; }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-weight: 700;
+    font-size: 1.35rem;
+    letter-spacing: -0.02em;
+  }
+  .brand-mark {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #1f6feb);
+    display: grid; place-items: center;
+    font-size: 14px; color: #000; font-weight: 900;
+  }
+  .tagline { color: var(--muted); font-size: 0.82rem; margin-bottom: 22px; line-height: 1.5; }
+  .tabs {
+    display: flex;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 18px;
+    gap: 4px;
+  }
+  .tab {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 11px 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all .18s ease;
+  }
+  .tab.active { background: var(--panel-2); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+  .panel { display: none; flex-direction: column; gap: 16px; }
+  .panel.active { display: flex; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .dropzone {
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    background: var(--panel-2);
+  }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: #0d1b2e; }
+  .dropzone .dz-icon { font-size: 1.8rem; margin-bottom: 6px; }
+  .dropzone .dz-main { font-size: 0.92rem; font-weight: 600; }
+  .dropzone .dz-sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+  input[type="file"] { display: none; }
+  .file-list {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-top: 12px; max-height: 180px; overflow-y: auto;
+  }
+  .file-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px; font-size: 0.82rem;
+  }
+  .file-row .fname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 10px; }
+  .file-row .fsize { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.76rem; flex-shrink: 0; }
+  .field { display: flex; flex-direction: column; }
+  .input {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; color: var(--text);
+    font-family: inherit; font-size: 0.92rem; outline: none; transition: border-color .15s;
+  }
+  .input:focus { border-color: var(--accent); }
+  .input::placeholder { color: #484f58; }
+  .hint { font-size: 0.74rem; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+  .btn {
+    border: 0; border-radius: 10px; padding: 13px 18px;
+    font-family: inherit; font-size: 0.92rem; font-weight: 700;
+    cursor: pointer; transition: opacity .15s, transform .1s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn:active { transform: scale(0.985); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #050608; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-2); }
+  .btn-secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .status {
+    border-radius: 10px; padding: 12px 14px; font-size: 0.84rem;
+    line-height: 1.5; display: none;
+  }
+  .status.show { display: block; }
+  .status.success { background: rgba(63,185,80,.08); border: 1px solid rgba(63,185,80,.3); color: var(--success); }
+  .status.error { background: rgba(248,81,73,.08); border: 1px solid rgba(248,81,73,.3); color: var(--danger); }
+  .status.info { background: rgba(88,166,255,.08); border: 1px solid rgba(88,166,255,.3); color: var(--accent-2); }
+  .status.warning { background: rgba(210,153,34,.08); border: 1px solid rgba(210,153,34,.3); color: var(--warning); }
+  .progress-wrap { display: none; flex-direction: column; gap: 6px; }
+  .progress-wrap.show { display: flex; }
+  .progress-track { height: 6px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
+  .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .2s; }
+  .progress-label { font-size: 0.76rem; color: var(--muted); }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.78rem; }
+  .meta-item .k { color: var(--muted); margin-bottom: 2px; }
+  .meta-item .v { font-weight: 600; word-break: break-all; }
+  .footer { margin-top: 28px; font-size: 0.72rem; color: #484f58; line-height: 1.7; text-align: center; }
+  .footer a { color: var(--muted); }
+  .lang-switch { display: flex; justify-content: flex-end; margin-bottom: 4px; }
+  .lang-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-family: inherit;
+  }
+  .lang-btn:hover { color: var(--text); border-color: var(--accent); }
+  [dir="rtl"] .brand { flex-direction: row-reverse; }
+  [dir="rtl"] .file-row { flex-direction: row-reverse; }
+  [dir="rtl"] .file-row .fname { margin-right: 0; margin-left: 10px; }
+  [dir="rtl"] .btn-row { flex-direction: row-reverse; }
+  @media (max-width: 420px) {
+    .meta-grid { grid-template-columns: 1fr; }
+    .btn-row { flex-direction: column; }
+    .btn { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="appRoot">
+
+  <div class="lang-switch">
+    <button class="lang-btn" id="langToggle" type="button" aria-label="Switch language">فا / EN</button>
+  </div>
+
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">N</div>
+    <span>NONONICK NNX</span>
+  </div>
+  <p class="tagline" data-i18n="tagline">Client-side encrypted file container. AES-256-GCM + PBKDF2. Your files never leave this device.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" id="tabEncrypt" role="tab" aria-selected="true" type="button" data-i18n="tabEncrypt">Encrypt</button>
+    <button class="tab" id="tabDecrypt" role="tab" aria-selected="false" type="button" data-i18n="tabDecrypt">Decrypt</button>
+  </div>
+
+  <!-- ================= ENCRYPT PANEL ================= -->
+  <div class="panel active" id="panelEncrypt" role="tabpanel">
+    <div class="card">
+      <span class="label" data-i18n="selectFiles">Select files to encrypt</span>
+      <div class="dropzone" id="dzEncrypt" tabindex="0" role="button" aria-label="Select files to encrypt">
+        <div class="dz-icon" aria-hidden="true">📂</div>
+        <div class="dz-main" data-i18n="dropMain">Drop files here or tap to browse</div>
+        <div class="dz-sub" data-i18n="dropSub">Any file type. Multiple files are packed into one NNX container.</div>
+      </div>
+      <input type="file" id="fileInputEncrypt" multiple>
+      <div class="file-list" id="fileListEncrypt"></div>
+      <div class="hint" data-i18n="encryptHint" id="encryptHint"></div>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label class="label" for="passEnc" data-i18n="password">Password</label>
+        <input class="input" type="password" id="passEnc" autocomplete="new-password" spellcheck="false" placeholder="••••••••••••">
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label class="label" for="passEnc2" data-i18n="confirmPassword">Confirm password</label>
+        <input class="input" type="password" id="passEnc2" autocomplete="new-password" spellcheck="false" placeholder="••••••••••••">
+      </div>
+      <p class="hint" data-i18n="passwordHint">Use a strong, unique password. There is no recovery if you forget it.</p>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnEncrypt" type="button" data-i18n="encryptBtn" disabled>Encrypt &amp; Download .nnx</button>
+    </div>
+    <div class="status info" id="statusEncrypt"></div>
+    <div class="progress-wrap" id="progEncWrap">
+      <div class="progress-track"><div class="progress-bar" id="progEncBar"></div></div>
+      <div class="progress-label" id="progEncLabel"></div>
+    </div>
+  </div>
+
+  <!-- ================= DECRYPT PANEL ================= -->
+  <div class="panel" id="panelDecrypt" role="tabpanel">
+    <div class="card">
+      <span class="label" data-i18n="selectNnx">Select .nnx package</span>
+      <div class="dropzone" id="dzDecrypt" tabindex="0" role="button" aria-label="Select an NNX file to decrypt">
+        <div class="dz-icon" aria-hidden="true">🔐</div>
+        <div class="dz-main" data-i18n="dropNnxMain">Drop .nnx here or tap to browse</div>
+        <div class="dz-sub" data-i18n="dropNnxSub">Only files created by NONONICK NNX can be opened.</div>
+      </div>
+      <input type="file" id="fileInputDecrypt" accept=".nnx">
+      <div class="file-list" id="fileListDecrypt"></div>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label class="label" for="passDec" data-i18n="password">Password</label>
+        <input class="input" type="password" id="passDec" autocomplete="current-password" spellcheck="false" placeholder="••••••••••••">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnDecrypt" type="button" data-i18n="decryptBtn" disabled>Decrypt &amp; Save</button>
+    </div>
+    <div class="status info" id="statusDecrypt"></div>
+    <div class="progress-wrap" id="progDecWrap">
+      <div class="progress-track"><div class="progress-bar" id="progDecBar"></div></div>
+      <div class="progress-label" id="progDecLabel"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>NONONICK NNX v1.0 — Format v1 — PBKDF2-HMAC-SHA-256 · AES-256-GCM</p>
+    <p data-i18n="footerNote">All cryptography runs in your browser. No uploads. No analytics. No backdoors.</p>
+    <p style="margin-top:8px"><strong data-i18n="auditNote">Not independently audited. Use at your own risk.</strong></p>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   NONONICK NNX — v1.0
+   Single-file, zero-knowledge encrypted file container.
+   Format spec is documented in README.md (included below).
+   ========================================================================= */
+
+(function() {
+  "use strict";
+
+  // ---------- Constants ----------
+  const MAGIC = new Uint8Array([0x4E, 0x4E, 0x58, 0x31]); // "NNX1"
+  const VERSION = 1;
+  const KDF_ALGO_PBKDF2 = 1;
+  const HEADER_LEN = 52;
+  const SALT_LEN = 16;
+  const IV_LEN = 12;
+  const TAG_LEN = 16;
+  const MAX_FILES = 5000;
+  const MAX_FILE_SIZE = 256 * 1024 * 1024;        // 256 MiB
+  const MAX_TOTAL_SIZE = 512 * 1024 * 1024;       // 512 MiB
+  const MAX_MANIFEST_LEN = 16 * 1024 * 1024;      // 16 MiB
+  const DEFAULT_ITERATIONS = 600000;
+  const MIN_ITERATIONS = 100000;
+  const MAX_ITERATIONS = 2000000;
+
+  // ---------- DOM helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const enc = new TextEncoder();
+  const dec = new TextDecoder("utf-8", { fatal: true });
+
+  function showStatus(el, type, msg) {
+    el.className = "status " + type + " show";
+    el.textContent = msg;
+  }
+  function hideStatus(el) { el.className = "status"; el.textContent = ""; }
+
+  function setProgress(wrap, bar, label, pct, text) {
+    wrap.classList.add("show");
+    bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
+    if (text) label.textContent = text;
+  }
+  function resetProgress(wrap, bar, label) {
+    wrap.classList.remove("show");
+    bar.style.width = "0%";
+    label.textContent = "";
+  }
+
+  function formatSize(n) {
+    if (n < 1024) return n + " B";
+    if (n < 1024*1024) return (n/1024).toFixed(1) + " KiB";
+    if (n < 1024*1024*1024) return (n/(1024*1024)).toFixed(1) + " MiB";
+    return (n/(1024*1024*1024)).toFixed(2) + " GiB";
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  }
+
+  // ---------- Error helper ----------
+  function nnxError(msg) { const e = new Error(msg); e.name = "NNXError"; return e; }
+
+  // ---------- Random & Crypto primitives ----------
+  function randomBytes(len) {
+    const b = new Uint8Array(len);
+    crypto.getRandomValues(b);
+    return b;
+  }
+
+  async function deriveKey(password, salt, iterations) {
+    const pwKey = await crypto.subtle.importKey(
+      "raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]
+    );
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+      pwKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"]
+    );
+  }
+
+  // ---------- Header serialization ----------
+  function buildHeader(iterations, salt, iv, ciphertextLength, metadataLength) {
+    const h = new Uint8Array(HEADER_LEN);
+    const dv = new DataView(h.buffer);
+    h.set(MAGIC, 0);
+    h[4] = VERSION;
+    h[5] = KDF_ALGO_PBKDF2;
+    dv.setUint32(6, iterations, false);
+    h.set(salt, 10);
+    h.set(iv, 26);
+    dv.setBigUint64(38, BigInt(ciphertextLength), false);
+    dv.setUint32(46, metadataLength, false);
+    dv.setUint16(50, 0, false);
+    return h;
+  }
+
+  function parseHeader(bytes) {
+    if (bytes.length < HEADER_LEN) throw nnxError("File too short to be a valid NNX package.");
+    const h = bytes.subarray(0, HEADER_LEN);
+    const dv = new DataView(h.buffer, h.byteOffset, h.byteLength);
+    for (let i = 0; i < 4; i++) if (h[i] !== MAGIC[i]) throw nnxError("Invalid NNX magic bytes. This is not an NNX file.");
+    const version = h[4];
+    if (version !== VERSION) throw nnxError("Unsupported NNX format version: " + version + ". Only v" + VERSION + " is supported.");
+    const kdfAlgo = h[5];
+    if (kdfAlgo !== KDF_ALGO_PBKDF2) throw nnxError("Unsupported KDF algorithm identifier: " + kdfAlgo);
+    const iterations = dv.getUint32(6, false);
+    if (iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) throw nnxError("PBKDF2 iteration count out of allowed range.");
+    const salt = h.slice(10, 26);
+    const iv = h.slice(26, 38);
+    const ciphertextLength = Number(dv.getBigUint64(38, false));
+    if (!Number.isSafeInteger(ciphertextLength) || ciphertextLength <= 0) throw nnxError("Invalid ciphertext length.");
+    const metadataLength = dv.getUint32(46, false);
+    if (metadataLength <= 0 || metadataLength > MAX_MANIFEST_LEN) throw nnxError("Invalid manifest length.");
+    if (dv.getUint16(50, false) !== 0) throw nnxError("Reserved header bytes must be zero.");
+    if (bytes.length !== HEADER_LEN + ciphertextLength) throw nnxError("File size does not match declared ciphertext length. File may be truncated or tampered.");
+    return { headerBytes: h, version, iterations, salt, iv, ciphertextLength, metadataLength };
+  }
+
+  // ---------- Manifest & path safety ----------
+  function sanitizeRelPath(rawPath) {
+    const p = String(rawPath).replace(/\\/g, "/");
+    if (!p || p === "." || p === "..") throw nnxError("Invalid empty or dot path.");
+    if (p.startsWith("/")) throw nnxError("Absolute paths are not allowed.");
+    if (/^[A-Za-z]:/.test(p)) throw nnxError("Drive-letter paths are not allowed.");
+    if (p.includes("\u0000")) throw nnxError("NUL bytes in paths are not allowed.");
+    const segments = p.split("/");
+    for (const seg of segments) {
+      if (seg === "" || seg === "." || seg === "..") throw nnxError("Path traversal or empty segment detected.");
+    }
+    if (segments.length > 32) throw nnxError("Path nesting depth exceeds limit.");
+    if (p.length > 1024) throw nnxError("Path name length exceeds limit.");
+    return segments.join("/");
+  }
+
+  // ---------- Encryption ----------
+  async function encryptFiles(files, password, iterations, onProgress) {
+    if (!files || files.length === 0) throw nnxError("No files selected.");
+    if (files.length > MAX_FILES) throw nnxError("Too many files (max " + MAX_FILES + ").");
+    if (password.length < 8) throw nnxError("Password must be at least 8 characters.");
+
+    // Read and validate all files first
+    const entries = [];
+    let total = 0;
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (f.size > MAX_FILE_SIZE) throw nnxError("File '" + f.name + "' exceeds " + formatSize(MAX_FILE_SIZE) + " per-file limit.");
+      total += f.size;
+      if (total > MAX_TOTAL_SIZE) throw nnxError("Total size exceeds " + formatSize(MAX_TOTAL_SIZE) + " limit.");
+      const safeName = sanitizeRelPath(f.name || ("file-" + i));
+      const buf = new Uint8Array(await f.arrayBuffer());
+      entries.push({ name: safeName, size: buf.length, data: buf });
+      if (onProgress) onProgress(i + 1, files.length, "Reading files…");
+    }
+
+    // Build manifest (deterministic: keys sorted)
+    let offset = 0;
+    const manifest = {
+      format: "NNX-MANIFEST-1",
+      entries: entries.map(e => {
+        const rec = { name: e.name, offset, size: e.size };
+        offset += e.size;
+        return rec;
+      })
+    };
+    const manifestStr = JSON.stringify(manifest); // insertion order is deterministic here
+    const manifestBytes = enc.encode(manifestStr);
+    if (manifestBytes.length > MAX_MANIFEST_LEN) throw nnxError("Manifest too large.");
+
+    // Assemble plaintext: [4-byte manifestLen][manifest][file data...]
+    const plaintext = new Uint8Array(4 + manifestBytes.length + total);
+    new DataView(plaintext.buffer).setUint32(0, manifestBytes.length, false);
+    plaintext.set(manifestBytes, 4);
+    let ptr = 4 + manifestBytes.length;
+    for (const e of entries) { plaintext.set(e.data, ptr); ptr += e.data.length; }
+
+    if (onProgress) onProgress(files.length, files.length, "Deriving key…");
+
+    const salt = randomBytes(SALT_LEN);
+    const iv = randomBytes(IV_LEN);
+    const key = await deriveKey(password, salt, iterations);
+
+    if (onProgress) onProgress(files.length, files.length, "Encrypting…");
+
+    const header = buildHeader(iterations, salt, iv, 0, manifestBytes.length); // placeholder ciphertextLen
+    // We need the real header with ciphertextLength for AAD.
+    // Compute ciphertext length = plaintext length + tag
+    const ctLen = plaintext.length + TAG_LEN;
+    const finalHeader = buildHeader(iterations, salt, iv, ctLen, manifestBytes.length);
+
+    const ciphertext = new Uint8Array(await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv, additionalData: finalHeader, tagLength: 128 },
+      key,
+      plaintext
+    ));
+
+    // Zero plaintext & key material references
+    plaintext.fill(0);
+    for (const e of entries) e.data.fill(0);
+
+    if (onProgress) onProgress(files.length, files.length, "Packaging…");
+
+    const out = new Uint8Array(HEADER_LEN + ciphertext.length);
+    out.set(finalHeader, 0);
+    out.set(ciphertext, HEADER_LEN);
+    return out;
+  }
+
+  // ---------- Decryption ----------
+  async function decryptPackage(nnxBytes, password, onProgress) {
+    if (password.length < 1) throw nnxError("Password is required.");
+    const parsed = parseHeader(nnxBytes);
+    const { headerBytes, iterations, salt, iv, ciphertextLength, metadataLength } = parsed;
+
+    if (onProgress) onProgress(0, 1, "Deriving key…");
+    const key = await deriveKey(password, salt, iterations);
+
+    if (onProgress) onProgress(0, 1, "Verifying & decrypting…");
+    let plaintext;
+    try {
+      plaintext = new Uint8Array(await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv, additionalData: headerBytes, tagLength: 128 },
+        key,
+        nnxBytes.subarray(HEADER_LEN)
+      ));
+    } catch (e) {
+      throw nnxError("Decryption failed. Wrong password, or the file is corrupted/tampered.");
+    }
+
+    // Parse manifest
+    if (plaintext.length < 4) throw nnxError("Decrypted payload is too short.");
+    const mlen = new DataView(plaintext.buffer).getUint32(0, false);
+    if (mlen <= 0 || mlen > MAX_MANIFEST_LEN || 4 + mlen > plaintext.length) throw nnxError("Invalid manifest length in decrypted payload.");
+    let manifest;
+    try {
+      manifest = JSON.parse(dec.decode(plaintext.subarray(4, 4 + mlen)));
+    } catch (e) { throw nnxError("Malformed manifest JSON."); }
+    if (!manifest || manifest.format !== "NNX-MANIFEST-1" || !Array.isArray(manifest.entries)) throw nnxError("Invalid manifest structure.");
+
+    const entries = manifest.entries;
+    if (entries.length > MAX_FILES) throw nnxError("Manifest declares too many files.");
+    const dataStart = 4 + mlen;
+    const dataRegion = plaintext.subarray(dataStart);
+
+    // Validate entries before extracting
+    let totalDeclared = 0;
+    const seen = new Set();
+    const validated = [];
+    for (const e of entries) {
+      if (typeof e.name !== "string" || typeof e.offset !== "number" || typeof e.size !== "number") throw nnxError("Invalid entry metadata.");
+      const safeName = sanitizeRelPath(e.name);
+      if (seen.has(safeName)) throw nnxError("Duplicate path in manifest: " + safeName);
+      seen.add(safeName);
+      if (!Number.isInteger(e.offset) || e.offset < 0 || !Number.isInteger(e.size) || e.size < 0) throw nnxError("Invalid offset/size.");
+      if (e.offset + e.size > dataRegion.length) throw nnxError("Manifest entry exceeds data region.");
+      if (e.size > MAX_FILE_SIZE) throw nnxError("Extracted file exceeds per-file limit.");
+      totalDeclared += e.size;
+      if (totalDeclared > MAX_TOTAL_SIZE) throw nnxError("Total extracted size exceeds limit.");
+      // compression-ratio guard: plaintext size vs ciphertext size is not meaningful here,
+      // but we can guard against absurd expansion if archive is involved. For raw files, size is exact.
+      validated.push({ name: safeName, offset: e.offset, size: e.size });
+    }
+
+    if (onProgress) onProgress(1, 1, "Extracting…");
+
+    const files = [];
+    for (const v of validated) {
+      const bytes = dataRegion.slice(v.offset, v.offset + v.size);
+      files.push({ name: v.name, data: bytes });
+    }
+
+    // Zero plaintext reference
+    plaintext.fill(0);
+    return files;
+  }
+
+  // ---------- Download helper ----------
+  function downloadBlob(data, filename, mime) {
+    const blob = new Blob([data], { type: mime || "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 4000);
+  }
+
+  // ---------- UI State ----------
+  const state = {
+    encFiles: [],
+    decFile: null,
+    lang: "en"
+  };
+
+  // ---------- File list rendering ----------
+  function renderFileList(container, files) {
+    container.innerHTML = "";
+    files.forEach((f, idx) => {
+      const row = document.createElement("div");
+      row.className = "file-row";
+      row.innerHTML = '<span class="fname" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+                      '<span class="fsize">' + formatSize(f.size) + '</span>';
+      container.appendChild(row);
+    });
+  }
+
+  // ---------- Encrypt flow ----------
+  function updateEncryptButton() {
+    const btn = $("btnEncrypt");
+    const pw = $("passEnc").value;
+    const pw2 = $("passEnc2").value;
+    btn.disabled = !(state.encFiles.length > 0 && pw.length >= 8 && pw === pw2);
+  }
+
+  function handleEncryptFileSelect(files) {
+    const list = Array.from(files || []);
+    if (list.length === 0) return;
+    if (list.length > MAX_FILES) { showStatus($("statusEncrypt"), "error", "Too many files selected (max " + MAX_FILES + ")."); return; }
+    let total = 0;
+    for (const f of list) {
+      if (f.size > MAX_FILE_SIZE) { showStatus($("statusEncrypt"), "error", "File '" + f.name + "' exceeds per-file limit (" + formatSize(MAX_FILE_SIZE) + ")."); return; }
+      total += f.size;
+      if (total > MAX_TOTAL_SIZE) { showStatus($("statusEncrypt"), "error", "Total selected size exceeds " + formatSize(MAX_TOTAL_SIZE) + "."); return; }
+    }
+    state.encFiles = list;
+    renderFileList($("fileListEncrypt"), list);
+    $("encryptHint").textContent = list.length + " file(s) selected · " + formatSize(total);
+    hideStatus($("statusEncrypt"));
+    updateEncryptButton();
+  }
+
+  async function doEncrypt() {
+    const pw = $("passEnc").value;
+    const pw2 = $("passEnc2").value;
+    if (pw !== pw2) { showStatus($("statusEncrypt"), "error", "Passwords do not match."); return; }
+    if (pw.length < 8) { showStatus($("statusEncrypt"), "error", "Password must be at least 8 characters."); return; }
+    if (state.encFiles.length === 0) return;
+
+    $("btnEncrypt").disabled = true;
+    hideStatus($("statusEncrypt"));
+    const wrap = $("progEncWrap"), bar = $("progEncBar"), label = $("progEncLabel");
+    resetProgress(wrap, bar, label);
+
+    try {
+      const nnxBytes = await encryptFiles(state.encFiles, pw, DEFAULT_ITERATIONS, (cur, tot, msg) => {
+        setProgress(wrap, bar, label, Math.round((cur/tot)*90), msg);
+      });
+      setProgress(wrap, bar, label, 100, "Done.");
+      const base = state.encFiles.length === 1
+        ? state.encFiles[0].name.replace(/\.[^.]+$/, "")
+        : "nnx-package-" + Date.now();
+      downloadBlob(nnxBytes, base + ".nnx", "application/octet-stream");
+      showStatus($("statusEncrypt"), "success", "Encryption successful. Your .nnx download should start automatically.");
+      // Clear sensitive inputs
+      $("passEnc").value = "";
+      $("passEnc2").value = "";
+    } catch (e) {
+      showStatus($("statusEncrypt"), "error", e.name === "NNXError" ? e.message : "Encryption failed: " + e.message);
+    } finally {
+      $("btnEncrypt").disabled = false;
+      updateEncryptButton();
+    }
+  }
+
+  // ---------- Decrypt flow ----------
+  function updateDecryptButton() {
+    $("btnDecrypt").disabled = !(state.decFile && $("passDec").value.length > 0);
+  }
+
+  function handleDecryptFileSelect(files) {
+    const f = files && files[0];
+    if (!f) return;
+    if (!f.name.toLowerCase().endsWith(".nnx")) {
+      showStatus($("statusDecrypt"), "error", "Please select a file with the .nnx extension.");
+      return;
+    }
+    state.decFile = f;
+    renderFileList($("fileListDecrypt"), [f]);
+    hideStatus($("statusDecrypt"));
+    updateDecryptButton();
+  }
+
+  async function doDecrypt() {
+    if (!state.decFile) return;
+    const pw = $("passDec").value;
+    if (!pw) return;
+
+    $("btnDecrypt").disabled = true;
+    hideStatus($("statusDecrypt"));
+    const wrap = $("progDecWrap"), bar = $("progDecBar"), label = $("progDecLabel");
+    resetProgress(wrap, bar, label);
+
+    try {
+      const raw = new Uint8Array(await state.decFile.arrayBuffer());
+      const files = await decryptPackage(raw, pw, (cur, tot, msg) => {
+        setProgress(wrap, bar, label, 80, msg);
+      });
+      setProgress(wrap, bar, label, 100, "Done.");
+      showStatus($("statusDecrypt"), "success", "Decryption successful. " + files.length + " file(s) extracted.");
+      files.forEach(f => {
+        // Save each file individually. iOS Safari may block multiple downloads; we stagger.
+        setTimeout(() => downloadBlob(f.data, f.name, "application/octet-stream"), 150);
+      });
+      $("passDec").value = "";
+    } catch (e) {
+      showStatus($("statusDecrypt"), "error", e.name === "NNXError" ? e.message : "Decryption failed.");
+    } finally {
+      $("btnDecrypt").disabled = false;
+      updateDecryptButton();
+    }
+  }
+
+  // ---------- Tab switching ----------
+  function switchTab(name) {
+    const isEnc = name === "encrypt";
+    $("tabEncrypt").classList.toggle("active", isEnc);
+    $("tabDecrypt").classList.toggle("active", !isEnc);
+    $("tabEncrypt").setAttribute("aria-selected", String(isEnc));
+    $("tabDecrypt").setAttribute("aria-selected", String(!isEnc));
+    $("panelEncrypt").classList.toggle("active", isEnc);
+    $("panelDecrypt").classList.toggle("active", !isEnc);
+  }
+
+  // ---------- i18n (EN / FA) ----------
+  const i18n = {
+    en: {
+      tagline: "Client-side encrypted file container. AES-256-GCM + PBKDF2. Your files never leave this device.",
+      tabEncrypt: "Encrypt", tabDecrypt: "Decrypt",
+      selectFiles: "Select files to encrypt",
+      dropMain: "Drop files here or tap to browse",
+      dropSub: "Any file type. Multiple files are packed into one NNX container.",
+      encryptHint: "", password: "Password", confirmPassword: "Confirm password",
+      passwordHint: "Use a strong, unique password. There is no recovery if you forget it.",
+      encryptBtn: "Encrypt & Download .nnx",
+      selectNnx: "Select .nnx package",
+      dropNnxMain: "Drop .nnx here or tap to browse",
+      dropNnxSub: "Only files created by NONONICK NNX can be opened.",
+      decryptBtn: "Decrypt & Save",
+      footerNote: "All cryptography runs in your browser. No uploads. No analytics. No backdoors.",
+      auditNote: "Not independently audited. Use at your own risk."
+    },
+    fa: {
+      tagline: "مخزن فایل رمزنگاری‌شده سمت کاربر. AES-256-GCM + PBKDF2. فایل‌های شما هرگز از این دستگاه خارج نمی‌شوند.",
+      tabEncrypt: "رمزگذاری", tabDecrypt: "رمزگشایی",
+      selectFiles: "فایل‌ها را برای رمزگذاری انتخاب کنید",
+      dropMain: "فایل‌ها را اینجا رها کنید یا برای انتخاب ضربه بزنید",
+      dropSub: "هر نوع فایلی. چند فایل در یک مخزن NNX بسته‌بندی می‌شوند.",
+      encryptHint: "", password: "گذرواژه", confirmPassword: "تأیید گذرواژه",
+      passwordHint: "از یک گذرواژه قوی و منحصربه‌فرد استفاده کنید. در صورت فراموشی، بازیابی وجود ندارد.",
+      encryptBtn: "رمزگذاری و دانلود .nnx",
+      selectNnx: "بسته .nnx را انتخاب کنید",
+      dropNnxMain: ".nnx را اینجا رها کنید یا ضربه بزنید",
+      dropNnxSub: "فقط فایل‌های ساخته‌شده با NONONICK NNX باز می‌شوند.",
+      decryptBtn: "رمزگشایی و ذخیره",
+      footerNote: "تمام رمزنگاری در مرورگر شما اجرا می‌شود. بدون آپلود. بدون تحلیل. بدون در پشتی.",
+      auditNote: "ممیزی مستقل نشده است. با مسئولیت خود استفاده کنید."
+    }
+  };
+
+  function applyLang(lang) {
+    state.lang = lang;
+    const dict = i18n[lang] || i18n.en;
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "fa" ? "rtl" : "ltr";
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n");
+      if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+  }
+
+  // ---------- Wire up event listeners ----------
+  function init() {
+    // Tabs
+    $("tabEncrypt").addEventListener("click", () => switchTab("encrypt"));
+    $("tabDecrypt").addEventListener("click", () => switchTab("decrypt"));
+
+    // Language
+    $("langToggle").addEventListener("click", () => {
+      applyLang(state.lang === "en" ? "fa" : "en");
+    });
+
+    // Encrypt file selection
+    const dzEnc = $("dzEncrypt");
+    const fiEnc = $("fileInputEncrypt");
+    dzEnc.addEventListener("click", () => fiEnc.click());
+    dzEnc.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fiEnc.click(); } });
+    dzEnc.addEventListener("dragover", (e) => { e.preventDefault(); dzEnc.classList.add("dragover"); });
+    dzEnc.addEventListener("dragleave", () => dzEnc.classList.remove("dragover"));
+    dzEnc.addEventListener("drop", (e) => {
+      e.preventDefault(); dzEnc.classList.remove("dragover");
+      handleEncryptFileSelect(e.dataTransfer.files);
+    });
+    fiEnc.addEventListener("change", (e) => { handleEncryptFileSelect(e.target.files); fiEnc.value = ""; });
+
+    // Decrypt file selection
+    const dzDec = $("dzDecrypt");
+    const fiDec = $("fileInputDecrypt");
+    dzDec.addEventListener("click", () => fiDec.click());
+    dzDec.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fiDec.click(); } });
+    dzDec.addEventListener("dragover", (e) => { e.preventDefault(); dzDec.classList.add("dragover"); });
+    dzDec.addEventListener("dragleave", () => dzDec.classList.remove("dragover"));
+    dzDec.addEventListener("drop", (e) => {
+      e.preventDefault(); dzDec.classList.remove("dragover");
+      handleDecryptFileSelect(e.dataTransfer.files);
+    });
+    fiDec.addEventListener("change", (e) => { handleDecryptFileSelect(e.target.files); fiDec.value = ""; });
+
+    // Password inputs
+    $("passEnc").addEventListener("input", updateEncryptButton);
+    $("passEnc2").addEventListener("input", updateEncryptButton);
+    $("passDec").addEventListener("input", updateDecryptButton);
+
+    // Action buttons
+    $("btnEncrypt").addEventListener("click", doEncrypt);
+    $("btnDecrypt").addEventListener("click", doDecrypt);
+
+    // Secure context check
+    if (!window.crypto || !window.crypto.subtle) {
+      showStatus($("statusEncrypt"), "error", "Web Crypto API is not available. This app requires a secure context (HTTPS or localhost).");
+    }
+
+    applyLang("en");
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
